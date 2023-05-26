@@ -1,0 +1,356 @@
+#!/usr/bin/env bash
+# Lightcord unified Linux installer by https://github.com/GermanBread
+# Honorable mention for former POSIX compliance: https://github.com/pryme-svg
+
+#                                ___           ___                       ___           ___           ___          _____    
+#                  ___          /  /\         /__/\          ___        /  /\         /  /\         /  /\        /  /::\   
+#                 /  /\        /  /:/_        \  \:\        /  /\      /  /:/        /  /::\       /  /::\      /  /:/\:\  
+#  ___     ___   /  /:/       /  /:/ /\        \__\:\      /  /:/     /  /:/        /  /:/\:\     /  /:/\:\    /  /:/  \:\ 
+# /__/\   /  /\ /__/::\      /  /:/_/::\   ___ /  /::\    /  /:/     /  /:/  ___   /  /:/  \:\   /  /:/~/:/   /__/:/ \__\:|
+# \  \:\ /  /:/ \__\/\:\__  /__/:/__\/\:\ /__/\  /:/\:\  /  /::\    /__/:/  /  /\ /__/:/ \__\:\ /__/:/ /:/___ \  \:\ /  /:/
+#  \  \:\  /:/     \  \:\/\ \  \:\ /~~/:/ \  \:\/:/__\/ /__/:/\:\   \  \:\ /  /:/ \  \:\ /  /:/ \  \:\/:::::/  \  \:\  /:/ 
+#   \  \:\/:/       \__\::/  \  \:\  /:/   \  \::/      \__\/  \:\   \  \:\  /:/   \  \:\  /:/   \  \::/~~~~    \  \:\/:/  
+#    \  \::/        /__/:/    \  \:\/:/     \  \:\           \  \:\   \  \:\/:/     \  \:\/:/     \  \:\         \  \::/   
+#     \__\/         \__\/      \  \::/       \  \:\           \__\/    \  \::/       \  \::/       \  \:\         \__\/    
+#                               \__\/         \__\/                     \__\/         \__\/         \__\/                  
+
+#
+#	DO NOT CHANGE
+#
+
+# URL for downloads
+LC='https://github.com/Lightcord/Lightcord/releases/latest/download/lightcord-linux-x64.zip'
+ICON='https://raw.githubusercontent.com/Lightcord/Lightcord/master/discord.png'
+DESKTOP='https://raw.githubusercontent.com/Lightcord/Lightcord/master/Lightcord.desktop'
+APPIMAGE='https://github.com/Lightcord/Lightcord/releases/latest/download/Lightcord-linux-x86_64.AppImage'
+
+Step() {
+    tput setaf 8
+    tput bold
+    printf "==> "
+    tput setaf 15
+    printf "$*\n"
+    tput sgr0
+}
+Info() {
+    tput setaf 6
+    printf " --> "
+    printf "$*\n"
+    tput sgr0
+}
+Warning() {
+    tput setaf 3
+    tput bold
+    printf " ->> "
+    tput setaf 11
+    printf "$*\n"
+    tput sgr0
+}
+Error() {
+    tput setaf 1
+    tput bold
+    printf " =>> "
+    tput setaf 9
+    printf "$*\n"
+    tput sgr0
+    
+    tput cnorm
+    exit 1
+}
+ListHeader() {
+    tput smul
+    (CheckForProgram lolcat) && \
+        printf "$1\n" | lolcat -S 58 -F .2 || \
+            printf "$1\n"
+    tput sgr0
+}
+ListItem() {
+    #(CheckForProgram lolcat) && \
+        #printf "[$1]" | lolcat -S $1 -F .2 || \
+            printf "[$1]"
+    printf " $2\n"
+}
+FakeListItem() {
+    tput setaf 8
+    printf "[$1]"
+    printf " $2\n"
+    tput sgr0
+}
+
+LogoSplash() {
+cat << "logo_end"
+    __    ____________  __________________  ____  ____ 
+   / /   /  _/ ____/ / / /_  __/ ____/ __ \/ __ \/ __ \
+  / /    / // / __/ /_/ / / / / /   / / / / /_/ / / / /
+ / /____/ // /_/ / __  / / / / /___/ /_/ / _, _/ /_/ / 
+/_____/___/\____/_/ /_/ /_/  \____/\____/_/ |_/_____/  
+
+                Linux installer
+
+logo_end
+}
+CreditSplash() {
+    printf "    "
+    tput smul
+    printf "Written with"
+    tput sgr0
+    tput setaf 1
+    tput bold
+    tput blink
+    printf " <3 "
+    tput sgr0
+    tput smul
+    printf "by "
+    tput bold
+    printf "pryme-svg"
+    tput sgr0
+    tput smul
+    printf " and "
+    tput bold
+    printf "GermanBread"
+    tput sgr0
+    printf "\n\n"
+}
+
+# 0 = OK
+CheckForProgram() {
+    command -v $* >/dev/null
+    return $?
+}
+# 0 = OK
+CheckForLibrary() {
+    (whereis -b "$1" | grep .so) >/dev/null
+    return $?
+}
+# 0 = OK
+Confirmation() {
+    tput bold
+    printf "$1 [Y/n] "
+    tput sgr0
+    
+    read _choice
+    [[ $_choice = [nN] ]] && return 1 || return 0
+}
+# 0 = OK
+InvertedConfirmation() {
+    tput bold
+    printf "$1 [y/N] "
+    tput sgr0
+    
+    read _choice
+    [[ $_choice = [yY] ]] && return 0 || return 1
+}
+Download() {
+	wget -qq -O $1 $2
+}
+    Error 'Installing Lightcord is not recommended!'
+}
+
+[ "$TERM" = "dumb" ] && exit 0
+
+(CheckForProgram wget) || \
+    Error '"wget" is not installed, this script uses wget to download files'
+(CheckForProgram unzip) || \
+    Error '"unzip" is not installed, this script uses unzip to decompress zip archives'
+(CheckForProgram sudo) || \
+    Error '"sudo" is not installed, this script depends on this command for privilege escalation. Global installation will therefore not be available'
+
+CheckForLibrary libnspr4.so
+_status=$?
+CheckForLibrary libnss3.so
+_status=$(($_status+$?))
+if [ $_status -ne 0 ]; then
+    Warning "Some required libraries seem to not be installed!\n\tMake sure that both 'libnspr4.so' and 'libnss3.so' are present in '/lib'"
+    (CheckForProgram pacman) && \
+        Info "$(tput setaf 12 && tput bold)Arch Linux or Arch-based$(tput sgr0 && tput setaf 15)\n\tsudo pacman -S nss nspr"
+    (CheckForProgram apt) && \
+        Info "$(tput setaf 13 && tput bold)Debian or Debian-based$(tput sgr0 && tput setaf 15)\n\tsudo apt install libnspr4 libnss3"
+fi
+unset _status
+
+(CheckForProgram lolcat) && \
+    LogoSplash | lolcat -S 58 -F .2 || \
+        LogoSplash
+CreditSplash
+
+tput civis
+
+ListHeader "Select scope"
+[ -d /etc/nixos ] && \
+    FakeListItem 1 "Global" || \
+        ListItem 1 "Global"
+ListItem 2 "Local"
+while ! [[ $_scope = [12] ]]; do
+    tput sc
+    read -n 1 _scope
+    tput rc
+done
+echo
+
+if [ -d /etc/nixos ]; then
+    Warning "A installation on NixOS is completely broken! " && \
+        (InvertedConfirmation "Continue anyways?") || \
+            exit 1
+fi
+
+ListHeader "Select mode"
+ListItem 1 "Install"
+ListItem 2 "Install (AppImage)"
+ListItem 3 "Update"
+ListItem 4 "Uninstall"
+while ! [[ $_mode = [1234] ]]; do
+    tput sc
+    read -n 1 _mode
+    tput rc
+done
+echo
+
+Step "The following will be done:"
+case $_scope in
+    1)
+        Info "Manage system-wide installation"
+    ;;
+    2)
+        Info "Manage user installation"
+    ;;
+esac
+case $_mode in
+    1)
+        Info "Install Lightcord"
+    ;;
+    2)
+        Info "Install Lightcord AppImage"
+    ;;
+    3)
+        Info "Update Lightcord"
+    ;;
+    4)
+        Info "Uninstall Lightcord"
+    ;;
+esac
+
+tput cnorm
+
+(Confirmation "Continue?") || \
+    exit 1
+
+tput civis
+
+[[ $_mode = [123] ]] && [ "$IGNORE_ABANDONED" != "true" ] && Discontinued
+
+[[ $_mode = [123] ]] && _operation=1
+[[ $_mode = [4] ]] && _operation=2
+_downloadcache=$(mktemp -d)
+case $_scope in
+    1)
+        case $_operation in
+            1)
+                Info "Downloading assets"
+                case $_mode in
+                    1)
+                        Download $_downloadcache/Lightcord.zip $LC
+                    ;;
+                    2)
+                        Download $_downloadcache/Lightcord.AppImage $APPIMAGE
+                    ;;
+                    3)
+                        [ -e /opt/Lightcord/appimage ] && \
+                            Download $_downloadcache/Lightcord.AppImage $APPIMAGE || \
+                                Download $_downloadcache/Lightcord.zip $LC
+                    ;;
+                esac
+                Download $_downloadcache/Lightcord.desktop $DESKTOP
+                Download $_downloadcache/lightcord.png $ICON
+                
+                Info "Preparing assets"
+                unzip -qq $_downloadcache/Lightcord.zip -d $_downloadcache/Lightcord 2>/dev/null
+                mv $_downloadcache/Lightcord/{lightcord,Lightcord} 2>/dev/null
+                
+                mkdir -p $_downloadcache/Lightcord
+                touch $_downloadcache/Lightcord/script
+                [ $_mode = 2 ] && \
+                    touch $_downloadcache/Lightcord/appimage
+                chmod +x $_downloadcache/Lightcord.AppImage 2>/dev/null
+                mv $_downloadcache/Lightcord{.AppImage,/Lightcord} 2>/dev/null
+
+                Step "Privilege elevation required"
+                sudo -K
+                [ "$(sudo -p "Enter your password here: " id -u)" != "0" ] && \
+                    Error "Authentication failed"
+
+                Info "Installing assets"
+                sudo mkdir -p /{opt/Lightcord,usr/share/{applications,pixmaps}}/
+                sudo mv -f $_downloadcache/Lightcord/* /opt/Lightcord/
+                sudo mv -f $_downloadcache/Lightcord.desktop /usr/share/applications/
+                sudo mv -f $_downloadcache/lightcord.png /usr/share/pixmaps/
+                sudo ln -s /opt/Lightcord/Lightcord /usr/bin/lightcord
+            ;;
+            2)
+                Step "Privilege elevation required"
+                sudo -K
+                [ "$(sudo -p "Enter your password here: " id -u)" != "0" ] && \
+                    Error "Authentication failed"
+                
+                Info "Deleting Lightcord"
+                sudo rm -rf /opt/Lightcord/
+                sudo rm -f /usr/share/pixmaps/lightcord.png
+                sudo rm -f /usr/share/applications/Lightcord.desktop
+                sudo rm -f /usr/bin/lightcord
+            ;;
+        esac
+    ;;
+
+    2)
+        case $_operation in
+            1)
+                Info "Downloading assets"
+                case $_mode in
+                    1)
+                        Download $_downloadcache/Lightcord.zip $LC
+                    ;;
+                    2)
+                        Download $_downloadcache/Lightcord.AppImage $APPIMAGE
+                    ;;
+                    3)
+                        [ -e ~/.Lightcord/isappimage ] && \
+                            Download $_downloadcache/Lightcord.AppImage $APPIMAGE || \
+                                Download $_downloadcache/Lightcord.zip $LC
+                    ;;
+                esac
+                Download $_downloadcache/Lightcord.desktop $DESKTOP
+                Download $_downloadcache/lightcord.png $ICON
+                
+                Info "Preparing assets"
+                unzip -qq $_downloadcache/Lightcord.zip -d $_downloadcache/Lightcord 2>/dev/null
+                mv $_downloadcache/Lightcord/{lightcord,Lightcord} 2>/dev/null
+                
+                mkdir -p $_downloadcache/Lightcord
+                touch $_downloadcache/Lightcord/script
+                [ $_mode = 2 ] && \
+                    touch $_downloadcache/Lightcord/isappimage
+                chmod +x $_downloadcache/Lightcord.AppImage 2>/dev/null
+                mv $_downloadcache/Lightcord{.AppImage,/Lightcord} 2>/dev/null
+                sed -i "s,/opt/Lightcord/Lightcord,~/.Lightcord/Lightcord,g" $_downloadcache/Lightcord.desktop
+
+                Info "Installing assets"
+                mkdir -p ~/.{Lightcord,local/{bin,share/{applications,icons/hicolor/512x512/apps}}}/
+                mv -f $_downloadcache/Lightcord/* ~/.Lightcord/
+                mv -f $_downloadcache/Lightcord.desktop ~/.local/share/applications/
+                mv -f $_downloadcache/lightcord.png ~/.local/share/icons/hicolor/512x512/apps/
+                ln -s ~/.Lightcord/Lightcord ~/.local/bin/lightcord
+                chmod +x ~/.local/bin/lightcord
+            ;;
+            2)
+                Info "Deleting Lightcord"
+                rm -rf ~/.Lightcord/
+                rm -f ~/.local/share/applications/Lightcord.desktop
+                rm -f ~/.local/share/icons/hicolor/512x512/apps/lightcord.png
+                rm -f ~/.local/bin/lightcord
+            ;;
+        esac
+    ;;
+esac
+rm -rf $_downloadcache
+unset LC ICON DESKTOP APPIMAGE _downloadcache _operation _mode _scope _choice
+
+tput cnorm
