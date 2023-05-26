@@ -143,8 +143,6 @@ InvertedConfirmation() {
 Download() {
 	wget -qq -O $1 $2
 }
-  
-}
 
 [ "$TERM" = "dumb" ] && exit 0
 
